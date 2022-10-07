@@ -1,6 +1,7 @@
 from random import choice
 from datacenter.models import Lesson, Schoolkid, Mark, Chastisement
 
+
 PRAISES = [
     'Молодец!',
     'Отлично!',
@@ -34,58 +35,54 @@ PRAISES = [
     'Теперь у тебя точно все получится!'
 ]
 
+def fix_marks(child_name: str) -> None:
+    """
+    Исправляет оценки 2 и 3 на 5
+    """
+    child = Schoolkid.objects.get(full_name__contains=child_name)
+    Mark.objects.filter(schoolkid=child).filter(points__in=[2, 3]).update(
+        points=5)
 
-class SchoolChild:
-    def __init__(self, child_name: str):
-        self.child_name = child_name
 
-    def fix_marks(self) -> None:
-        """
-        Исправляет оценки 2 и 3 на 5
-        """
-        child = Schoolkid.objects.get(full_name__contains=self.child_name)
-        Mark.objects.filter(schoolkid=child).filter(points__in=[2, 3]).update(
-            points=5)
+def delete_chastisements(child_name) -> None:
+    """
+    Удаляет плохие замечания
+    """
+    Chastisement.objects.filter(schoolkid=child_name).delete()
 
-    def delete_chastisements(self) -> None:
-        """
-        Удаляет плохие замечания
-        """
-        Chastisement.objects.filter(schoolkid=self.child_name).delete()
 
-    def create_commendation(self, lesson: str) -> None:
-        """
-        Добавляет случайные хвалебные коментарии по определенному предмету
-        """
-        child = Schoolkid.objects.get(full_name__contains=self.child_name)
-        last_lesson = Lesson.objects.filter(
-            year_of_study=child.year_of_study,
-            group_letter=child.group_letter,
-            subject__title__contains=lesson
-        ).order_by('-date').first()
+def create_commendation(child_name: str, lesson: str) -> None:
+    """
+    Добавляет случайные хвалебные коментарии по определенному предмету
+    """
+    child = Schoolkid.objects.get(full_name__contains=child_name)
+    last_lesson = Lesson.objects.filter(
+        year_of_study=child.year_of_study,
+        group_letter=child.group_letter,
+        subject__title__contains=lesson
+    ).order_by('-date').first()
 
-        praise = choice(PRAISES)
-        chastisement_child = Chastisement.objects.filter(
-            schoolkid=child,
-            subject__title__contains=last_lesson
-        )
+    praise = choice(PRAISES)
+    chastisement_child = Chastisement.objects.filter(
+        schoolkid=child,
+        subject__title__contains=last_lesson
+    )
 
-        chastisement_child.create(
-            text=praise,
-            created=last_lesson.date,
-            teacher=last_lesson.teacher,
-            schoolkid=child,
-            subject=last_lesson.subject
-        )
+    chastisement_child.create(
+        text=praise,
+        created=last_lesson.date,
+        teacher=last_lesson.teacher,
+        schoolkid=child,
+        subject=last_lesson.subject
+    )
 
 
 def main():
     child_name = 'Фролов Иван Григорьевич'
     lesson = 'Музыка'
-    school_child = SchoolChild(child_name=child_name)
-    school_child.fix_marks()
-    school_child.create_commendation(lesson)
-    school_child.delete_chastisements()
+    fix_marks(child_name=child_name)
+    create_commendation(child_name=child_name, lesson=lesson)
+    delete_chastisements(child_name=child_name)
 
 
 if __name__ == '__main__':
